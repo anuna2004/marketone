@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payment Test</title>
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        #payment-form { margin: 20px 0; }
+        .form-row { margin: 10px 0; }
+        button { padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:disabled { background: #cccccc; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Payment Test</h2>
+        <div>
+            <input type="text" id="bookingId" placeholder="Enter Booking ID">
+            <button onclick="initializePayment()">Initialize Payment</button>
+        </div>
+        <form id="payment-form">
+            <div class="form-row">
+                <label for="card-element">Credit or debit card</label>
+                <div id="card-element"></div>
+                <div id="card-errors" role="alert"></div>
+            </div>
+            <button type="submit" id="submit-button" disabled>Pay Now</button>
+        </form>
+        <div class="log" id="log"></div>
+    </div>
+
+    <script>
+        const stripe = Stripe('your_publishable_key'); // Replace with your Stripe publishable key
+        const socket = io('http://localhost:5000');
+        const log = document.getElementById('log');
+        
+        function addLog(message) {
+            const entry = document.createElement('div');
+            entry.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            log.appendChild(entry);
+        }
+
+        // Create card element
+        const elements = stripe.elements();
+        const card = elements.create('card');
+        card.mount('#card-element');
+
+        card.addEventListener('change', ({error}) => {
+            const displayError = document.getElementById('card-errors');
+            if (error) {
+                displayError.textContent = error.message;
+                document.getElementById('submit-button').disabled = true;
+            } else {
+                displayError.textContent = '';
+                document.getElementById('submit-button').disabled = false;
+            }
+        });
+
+        // Handle form submission
+        const form = document.getElementById('payment-form');
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const bookingId = document.getElementById('bookingId').value;
+            
+            try {
+                // Get payment intent
+                const response = await fetch(`/api/payments/create-intent/${bookingId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+
+                // Confirm payment
+                const result = await stripe.confirmCardPayment(data.clientSecret, {
+                    payment_method: {
+                        card: card,
+                    }
+                });
+
+                if (result.error) {
+                    addLog(`Payment failed: ${result.error.message}`);
+                    await fetch(`/api/payments/failed/${bookingId}`, {
+                        method: 'POST'
+                    });
+                } else {
+                    addLog('Payment successful!');
+                    await fetch(`/api/payments/success/${bookingId}`, {
+                        method: 'POST'
+                    });
+                }
+            } catch (error) {
+                addLog(`Error: ${error.message}`);
+            }
+        });
+
+        // Socket.IO event listeners
+        socket.on('paymentReceived', (data) => {
+            addLog(`Provider received payment: ${JSON.stringify(data)}`);
+        });
+
+        socket.on('paymentFailed', (data) => {
+            addLog(`Payment failed: ${JSON.stringify(data)}`);
+        });
+    </script>
+</body>
+</html> 
