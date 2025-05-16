@@ -1,34 +1,66 @@
 const stripe = require('../config/stripe');
 const Booking = require('../models/Booking');
+const Service = require('../models/Service');
 const { getIO } = require('../utils/socket');
 
 // Create payment intent
 const createPaymentIntent = async (req, res) => {
   try {
     const { bookingId } = req.params;
-    const booking = await Booking.findById(bookingId).populate('serviceId');
+    
+    console.log('Creating payment intent for booking:', bookingId);
+    
+    const booking = await Booking.findById(bookingId);
     
     if (!booking) {
+      console.log('Booking not found:', bookingId);
       return res.status(404).json({ message: 'Booking not found' });
     }
+    
+    // Fetch service details directly
+    const service = await Service.findById(booking.serviceId);
+    if (!service) {
+      console.log('Service not found:', booking.serviceId);
+      return res.status(404).json({ message: 'Service not found' });
+    }
+    
+    console.log('Service details:', {
+      id: service._id,
+      name: service.name,
+      price: service.price
+    });
+
+    if (!service.price) {
+      console.log('Price not found for service:', service._id);
+      return res.status(400).json({ message: 'Service price is not set' });
+    }
+
+    const amount = Math.round(service.price * 100); // Convert to cents
+    console.log('Creating Stripe payment intent for amount:', amount);
 
     // Create payment intent
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.serviceId.price * 100, // Convert to cents
+      amount: amount,
       currency: 'usd',
       metadata: {
         bookingId: booking._id.toString(),
-        serviceId: booking.serviceId._id.toString(),
-        customerId: booking.customerId,
-        providerId: booking.providerId
-      }
+        serviceId: service._id.toString()
+      },
+      payment_method_types: ['card']
     });
+
+    console.log('Payment intent created successfully');
 
     res.json({
       clientSecret: paymentIntent.client_secret
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Payment intent creation failed:', error);
+    res.status(500).json({ 
+      message: 'Failed to create payment intent',
+      error: error.message,
+      type: error.type
+    });
   }
 };
 
@@ -105,4 +137,4 @@ module.exports = {
   handleSuccessfulPayment,
   handleFailedPayment,
   getPaymentHistory
-}; 
+};

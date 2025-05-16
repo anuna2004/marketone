@@ -13,8 +13,11 @@ export const BookingProvider = ({ children }) => {
     instructions: ''
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const { token } = useAuth();
+  const [error, setError] = useState(null);  const { token } = useAuth();
+
+  const selectService = (service) => {
+    setSelectedService(service);
+  };
 
   const updateBookingDetails = (details) => {
     setBookingDetails(prev => ({ ...prev, ...details }));
@@ -84,6 +87,7 @@ export const BookingProvider = ({ children }) => {
         clearBooking,
         createBooking,
         cancelBooking,
+        selectService,
         loading,
         error
       }}
@@ -99,4 +103,4 @@ export const useBooking = () => {
     throw new Error('useBooking must be used within a BookingProvider');
   }
   return context;
-}; 
+};

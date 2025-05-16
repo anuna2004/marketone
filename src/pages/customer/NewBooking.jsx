@@ -2,6 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail } from 'lucide-react';
 import { useBooking } from '../../context/BookingContext';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
+import { PaymentForm } from '../../components/PaymentForm';
+
+const stripePromise = loadStripe('pk_test_51ROk9fPhBKjymCAAjWx2L1NrYDz9NtqwQJFLETT1TixdoaBJDZtyopwvrMyj3yxuPvtqYCDB22CBukpLsn1bUyd600tppq7ZB2');
 
 const NewBooking = () => {
   const navigate = useNavigate();
@@ -29,7 +34,10 @@ const NewBooking = () => {
         </button>
       </div>
     );
-  }
+  }  const [step, setStep] = useState('details'); // 'details' or 'payment'
+  const [bookingId, setBookingId] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -51,8 +59,9 @@ const NewBooking = () => {
       }
 
       const booking = await response.json();
+      setBookingId(booking._id);
       updateBookingDetails(formData);
-      navigate(`/customer/booking-confirmation/${booking._id}`);
+      setStep('payment');
     } catch (error) {
       console.error('Error creating booking:', error);
       // You might want to show an error message to the user here
@@ -66,7 +75,79 @@ const NewBooking = () => {
       ...prev,
       [name]: value,
     }));
+  };  const handlePaymentSuccess = async (paymentMethod) => {
+    try {
+      // First, create a payment intent
+      const intentResponse = await fetch(`http://localhost:5000/api/payments/create-intent/${bookingId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!intentResponse.ok) {
+        throw new Error('Failed to create payment intent');
+      }
+
+      const { clientSecret } = await intentResponse.json();
+
+      // Then confirm the payment with Stripe
+      const stripe = await stripePromise;
+      const { error } = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: paymentMethod.id
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+
+      // If payment is successful, update the backend
+      const successResponse = await fetch(`http://localhost:5000/api/payments/success/${bookingId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      if (!successResponse.ok) {
+        throw new Error('Payment confirmed but failed to update booking');
+      }
+
+      navigate(`/customer/booking-confirmation/${bookingId}`);
+    } catch (error) {
+      setPaymentError(error.message);
+    }
   };
+
+  const handlePaymentError = (error) => {
+    setPaymentError(error);
+  };
+
+  if (step === 'payment') {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 mb-6">Complete Payment</h1>
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Details</h2>
+          <div className="mb-6">
+            <p className="text-gray-600">Amount to pay: ${selectedService.price}</p>
+          </div>
+          {paymentError && (
+            <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-md">
+              {paymentError}
+            </div>
+          )}
+          <Elements stripe={stripePromise}>
+            <PaymentForm
+              amount={selectedService.price}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          </Elements>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -78,7 +159,7 @@ const NewBooking = () => {
           Service Details
         </h2>
         <div className="space-y-2">
-          <p className="text-gray-900 font-medium">{selectedService.title}</p>
+          <p className="text-gray-900 font-medium">{selectedService.name}</p>
           <p className="text-gray-600">{selectedService.description}</p>
           <p className="text-primary-600 font-semibold">
             ${selectedService.price}

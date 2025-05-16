@@ -65,9 +65,8 @@ const ServiceDetails = () => {
     <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center space-x-2 text-sm text-gray-600">
-        <Link to="/customer/services" className="hover:text-primary-600">Services</Link>
-        <span>/</span>
-        <span className="text-gray-900">{service.title}</span>
+        <Link to="/customer/services" className="hover:text-primary-600">Services</Link>        <span>/</span>
+        <span className="text-gray-900">{service.name}</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -76,13 +75,13 @@ const ServiceDetails = () => {
           <div className="relative h-96 rounded-lg overflow-hidden">
             <img
               src={service.image}
-              alt={service.title}
+              alt={service.name}
               className="w-full h-full object-cover"
             />
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              {service.title}
+              {service.name}
             </h1>
             <div className="flex items-center space-x-4 mb-4">
               <div className="flex items-center">
