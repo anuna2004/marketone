@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { services, serviceCategories } from '../../utils/mockData';
 import { Search, Filter, Star, ChevronDown } from 'lucide-react';
+import { servicesApi } from '../../utils/api';
 
 const ServiceCard = ({ service }) => (
   <div className="bg-white rounded-lg shadow-sm overflow-hidden">
     <div className="relative h-48">
       <img
-        src={service.image}
-        alt={service.title}
+        src={service.images?.[0] || '/placeholder-image.jpg'}
+        alt={service.name}
         className="w-full h-full object-cover"
       />
       <div className="absolute top-2 right-2 bg-white px-2 py-1 rounded-full text-sm font-medium text-primary-600">
@@ -18,18 +18,18 @@ const ServiceCard = ({ service }) => (
     <div className="p-6">
       <div className="flex justify-between items-start mb-2">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{service.title}</h3>
-          <p className="text-sm text-gray-600">{service.provider}</p>
+          <h3 className="text-lg font-semibold text-gray-900">{service.name}</h3>
+          <p className="text-sm text-gray-600">{service.location?.address}</p>
         </div>
         <div className="flex items-center">
           <Star className="h-4 w-4 text-yellow-400 fill-current" />
-          <span className="ml-1 text-sm text-gray-600">{service.rating}</span>
+          <span className="ml-1 text-sm text-gray-600">{service.averageRating || 'New'}</span>
         </div>
       </div>
       <div className="space-y-2">
         <p className="text-sm text-gray-600">Category: {service.category}</p>
         <Link
-          to={`/customer/services/${service.id}`}
+          to={`/customer/services/${service._id}`}
           className="block w-full btn btn-primary text-center"
         >
           View Details
@@ -39,14 +39,42 @@ const ServiceCard = ({ service }) => (
   </div>
 );
 
+const serviceCategories = [
+  'Cleaning',
+  'Home Repair',
+  'Moving',
+  'Pet Care',
+  'Technology',
+  'Personal Care',
+  'Events',
+  'Other'
+];
+
 const Services = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [sortBy, setSortBy] = useState('price');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [services, setServices] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const data = await servicesApi.getAll();
+        setServices(data);
+      } catch (err) {
+        setError('Failed to load services');
+        console.error('Error fetching services:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const filteredServices = services.filter((service) => {
-    const matchesSearch = service.title
+    fetchServices();
+  }, []);  const filteredServices = services.filter((service) => {
+    if (!service || !service.name) return false;
+    const matchesSearch = service.name
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const matchesCategory =
@@ -64,6 +92,27 @@ const Services = () => {
         return 0;
     }
   });
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Loading services...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 btn btn-primary"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -143,4 +192,4 @@ const Services = () => {
   );
 };
 
-export default Services; 
+export default Services;

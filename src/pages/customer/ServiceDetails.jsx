@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { services } from '../../utils/mockData';
+import { servicesApi } from '../../utils/api';
 import { useBooking } from '../../context/BookingContext';
 import { Star, Calendar, Clock, MapPin, MessageSquare } from 'lucide-react';
 
@@ -10,13 +10,38 @@ const ServiceDetails = () => {
   const navigate = useNavigate();
   const { selectService } = useBooking();
   const [activeTab, setActiveTab] = useState('description');
+  const [service, setService] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const service = services.find((s) => s.id === parseInt(id));
+  useEffect(() => {
+    const loadService = async () => {
+      try {
+        setLoading(true);
+        const data = await servicesApi.getById(id);
+        setService(data);
+      } catch (err) {
+        setError('Failed to load service details. Please try again later.');
+        console.error('Error loading service:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  if (!service) {
+    loadService();
+  }, [id]);
+  if (loading) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">Service not found</p>
+        <p>Loading service details...</p>
+      </div>
+    );
+  }
+
+  if (error || !service) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">{error || 'Service not found'}</p>
         <Link to="/customer/services" className="mt-4 btn btn-primary">
           Back to Services
         </Link>
@@ -25,7 +50,14 @@ const ServiceDetails = () => {
   }
 
   const handleBookNow = () => {
-    selectService(service);
+    selectService({
+      _id: service._id,
+      name: service.name,
+      price: service.price,
+      duration: service.duration,
+      category: service.category,
+      location: service.location
+    });
     navigate('/customer/new-booking');
   };
 

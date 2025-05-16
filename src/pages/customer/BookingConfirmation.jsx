@@ -1,15 +1,50 @@
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useBooking } from '../../context/BookingContext';
-import { CheckCircle, Calendar, Clock, MapPin } from 'lucide-react';
+import { CheckCircle, Calendar, Clock, MapPin, Mail, Phone, User } from 'lucide-react';
 
 const BookingConfirmation = () => {
   const navigate = useNavigate();
-  const { selectedService, bookingDetails, clearBooking } = useBooking();
+  const { id } = useParams();
+  const [booking, setBooking] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const { clearBooking } = useBooking();
 
-  if (!selectedService) {
+  useEffect(() => {
+    const fetchBooking = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/bookings/${id}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch booking details');
+        }
+        const data = await response.json();
+        setBooking(data);
+      } catch (err) {
+        console.error('Error fetching booking:', err);
+        setError('Failed to load booking details');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchBooking();
+    }
+  }, [id]);
+
+  if (loading) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600">No booking found</p>
+        <p>Loading booking details...</p>
+      </div>
+    );
+  }
+
+  if (error || !booking) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">{error || 'Booking not found'}</p>
         <button
           onClick={() => navigate('/customer/services')}
           className="mt-4 btn btn-primary"

@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, CreditCard } from 'lucide-react';
+import { Calendar, Clock, MapPin, CreditCard, User, Phone, Mail } from 'lucide-react';
 import { useBooking } from '../../context/BookingContext';
 
 const NewBooking = () => {
   const navigate = useNavigate();
   const { selectedService, updateBookingDetails } = useBooking();
+  
   const [formData, setFormData] = useState({
+    customerName: '',
+    customerPhone: '',
+    customerEmail: '',
     date: '',
     time: '',
     address: '',
@@ -26,11 +30,34 @@ const NewBooking = () => {
       </div>
     );
   }
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    updateBookingDetails(formData);
-    navigate('/customer/booking-confirmation');
+    try {
+      const bookingData = {
+        serviceId: selectedService._id,
+        ...formData
+      };
+      
+      const response = await fetch('http://localhost:5000/api/bookings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(bookingData)
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create booking');
+      }
+
+      const booking = await response.json();
+      updateBookingDetails(formData);
+      navigate(`/customer/booking-confirmation/${booking._id}`);
+    } catch (error) {
+      console.error('Error creating booking:', error);
+      // You might want to show an error message to the user here
+      alert('Failed to create booking. Please try again.');
+    }
   };
 
   const handleChange = (e) => {
@@ -61,6 +88,66 @@ const NewBooking = () => {
 
       {/* Booking Form */}
       <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Customer Information */}
+        <div className="bg-white rounded-lg shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">
+            Your Information
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Name
+              </label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="text"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your full name"
+                  className="w-full pl-10 border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Phone
+              </label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="tel"
+                  name="customerPhone"
+                  value={formData.customerPhone}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your phone number"
+                  className="w-full pl-10 border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <input
+                  type="email"
+                  name="customerEmail"
+                  value={formData.customerEmail}
+                  onChange={handleChange}
+                  required
+                  placeholder="Your email address"
+                  className="w-full pl-10 border-gray-300 rounded-md"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Date and Time */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -179,4 +266,4 @@ const NewBooking = () => {
   );
 };
 
-export default NewBooking; 
+export default NewBooking;

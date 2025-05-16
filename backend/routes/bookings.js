@@ -28,8 +28,12 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create booking
-router.post('/', async (req, res) => {  const booking = new Booking({
+router.post('/', async (req, res) => {
+  const booking = new Booking({
     serviceId: req.body.serviceId,
+    customerName: req.body.customerName,
+    customerPhone: req.body.customerPhone,
+    customerEmail: req.body.customerEmail,
     date: req.body.date,
     time: req.body.time,
     address: req.body.address,
