@@ -21,6 +21,9 @@ const server = http.createServer(app);
 // Initialize Socket.IO
 initializeSocket(server);
 
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
+
 // CORS configuration
 app.use(cors({
   origin: 'http://localhost:5173', // Your frontend URL
@@ -69,4 +72,4 @@ const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-}); 
+});

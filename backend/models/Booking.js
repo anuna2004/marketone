@@ -1,18 +1,9 @@
 const mongoose = require('mongoose');
 
-const bookingSchema = new mongoose.Schema({
-  serviceId: {
+const bookingSchema = new mongoose.Schema({  serviceId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'Service'
-  },
-  customerId: {
-    type: String,
-    required: true
-  },
-  providerId: {
-    type: String,
-    required: true
   },
   date: {
     type: Date,

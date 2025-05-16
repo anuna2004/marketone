@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { X, Upload, Trash2 } from 'lucide-react';
 import { servicesApi } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 
 const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
-  const { user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -22,7 +20,6 @@ const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
-
   useEffect(() => {
     if (service) {
       setFormData({
@@ -71,9 +68,7 @@ const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
       const formData = new FormData();
       files.forEach(file => {
         formData.append('images', file);
-      });
-
-      const response = await servicesApi.uploadImages(service?._id || 'temp', files, {
+      });      const response = await servicesApi.uploadImages(service?._id || 'temp', files, {
         onUploadProgress: (progressEvent) => {
           const progress = Math.round((progressEvent.loaded * 100) / progressEvent.total);
           setUploadProgress(progress);
@@ -82,7 +77,7 @@ const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
 
       setFormData(prev => ({
         ...prev,
-        images: [...prev.images, ...response.data.urls]
+        images: [...prev.images, ...response.urls]
       }));
     } catch (err) {
       setError('Failed to upload images. Please try again.');
@@ -356,4 +351,4 @@ const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
   );
 };
 
-export default ServiceModal; 
+export default ServiceModal;

@@ -3,6 +3,7 @@ const router = express.Router();
 const Service = require('../models/Service');
 const upload = require('../middleware/upload');
 const { getIO } = require('../utils/socket');
+const path = require('path');
 
 // Get all services
 router.get('/', async (req, res) => {
@@ -11,6 +12,32 @@ router.get('/', async (req, res) => {
     res.json(services);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Upload images for a service
+router.post('/:id/images', upload.array('images', 5), async (req, res) => {
+  try {
+    const imageUrls = req.files ? req.files.map(file => `/uploads/${path.basename(file.path)}`) : [];
+    
+    if (req.params.id === 'temp') {
+      // For temporary uploads, just return the URLs
+      return res.json({ urls: imageUrls });
+    }
+
+    const service = await Service.findById(req.params.id);
+    if (!service) {
+      return res.status(404).json({ message: 'Service not found' });
+    }
+
+    // Add new images to existing ones
+    service.images = [...service.images, ...imageUrls];
+    await service.save();
+
+    res.json({ urls: imageUrls });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(400).json({ message: error.message });
   }
 });
 
@@ -30,10 +57,8 @@ router.get('/:id', async (req, res) => {
 // Create service with image upload
 router.post('/', upload.array('images', 5), async (req, res) => {
   try {
-    const imageUrls = req.files ? req.files.map(file => file.path) : [];
-    
+    const imageUrls = req.files ? req.files.map(file => `/uploads/${path.basename(file.path)}`) : [];
     const service = new Service({
-      providerId: req.body.providerId, // Ensure providerId is included
       name: req.body.name,
       description: req.body.description,
       price: req.body.price,
@@ -58,13 +83,12 @@ router.post('/', upload.array('images', 5), async (req, res) => {
 
 // Update service with image upload
 router.put('/:id', upload.array('images', 5), async (req, res) => {
-  try {
-    const service = await Service.findById(req.params.id);
+  try {    const service = await Service.findById(req.params.id);
     if (!service) {
       return res.status(404).json({ message: 'Service not found' });
     }
 
-    const imageUrls = req.files ? req.files.map(file => file.path) : service.images;
+    const imageUrls = req.files ? req.files.map(file => `/uploads/${path.basename(file.path)}`) : service.images;
     
     Object.assign(service, {
       name: req.body.name,
