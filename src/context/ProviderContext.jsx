@@ -1,16 +1,20 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { servicesApi } from '../utils/api';
+import { servicesApi, bookingsApi } from '../utils/api';
 
 const ProviderContext = createContext(null);
 
 export const ProviderProvider = ({ children }) => {
   const [services, setServices] = useState([]);
+  const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch services on mount
+  // Fetch services and bookings on mount
   useEffect(() => {
-    fetchServices();
+    const fetchData = async () => {
+      await Promise.all([fetchServices(), fetchBookings()]);
+    };
+    fetchData();
   }, []);
 
   const fetchServices = async () => {
@@ -23,6 +27,24 @@ export const ProviderProvider = ({ children }) => {
       console.error('Error fetching services:', err);
       setError(err.response?.data?.message || 'Failed to fetch services');
       setServices([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch bookings
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await bookingsApi.getAll();
+      setBookings(response || []);
+      return response;
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError(err.response?.data?.message || 'Failed to fetch bookings');
+      setBookings([]);
+      throw err;
     } finally {
       setLoading(false);
     }
@@ -79,16 +101,40 @@ export const ProviderProvider = ({ children }) => {
     }
   };
 
+  // Update booking status
+  const updateBookingStatus = async (id, status) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const updatedBooking = await bookingsApi.updateStatus(id, { status });
+      setBookings(prev =>
+        prev.map(booking =>
+          booking._id === id ? { ...booking, ...updatedBooking } : booking
+        )
+      );
+      return updatedBooking;
+    } catch (err) {
+      console.error('Error updating booking status:', err);
+      setError(err.response?.data?.message || 'Failed to update booking status');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ProviderContext.Provider
       value={{
         services,
+        bookings,
         loading,
         error,
         addService,
         updateService,
         deleteService,
         refreshServices: fetchServices,
+        refreshBookings: fetchBookings,
+        updateBookingStatus,
       }}
     >
       {children}

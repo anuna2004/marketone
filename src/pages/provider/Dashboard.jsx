@@ -1,5 +1,6 @@
 import { useProvider } from '../../context/ProviderContext';
 import { useNavigate } from 'react-router-dom';
+import { format, parseISO } from 'date-fns';
 import {
   TrendingUp,
   Calendar,
@@ -45,25 +46,22 @@ const ProviderDashboard = () => {
   const navigate = useNavigate();
   const { services = [], bookings = [] } = useProvider();
 
-  const totalEarnings = services.reduce(
-    (sum, service) =>
-      sum +
-      service.price *
-        bookings.filter(
-          (booking) =>
-            booking.service === service.name &&
-            booking.status === 'Completed'
-        ).length,
-    0
-  );
+  const totalEarnings = services.reduce((sum, service) => {
+    const serviceBookings = bookings.filter(
+      (booking) =>
+        booking.service?._id === service._id &&
+        booking.status === 'completed'
+    );
+    return sum + (service.price * serviceBookings.length);
+  }, 0);
 
+  const today = format(new Date(), 'yyyy-MM-dd');
   const todayBookings = bookings.filter(
-    (booking) =>
-      new Date(booking.date).toDateString() === new Date().toDateString()
+    (booking) => booking.date === today
   );
 
   const pendingBookings = bookings.filter(
-    (booking) => booking.status === 'Pending'
+    (booking) => booking.status === 'pending'
   );
 
   return (
@@ -150,17 +148,19 @@ const ProviderDashboard = () => {
               className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
             >
               <div>
-                <p className="font-medium text-gray-900">{booking.service}</p>
+                <p className="font-medium text-gray-900">{booking.service?.name || 'Service'}</p>
                 <p className="text-sm text-gray-600">
-                  {booking.customer} - {new Date(booking.date).toLocaleDateString()}
+                  {booking.user?.name || 'Customer'} - {format(parseISO(booking.date), 'MMM dd, yyyy')}
                 </p>
               </div>
               <span
                 className={`px-3 py-1 text-sm font-medium rounded-full ${
-                  booking.status === 'Completed'
+                  booking.status === 'completed'
                     ? 'bg-green-100 text-green-800'
-                    : booking.status === 'Pending'
+                    : booking.status === 'pending'
                     ? 'bg-yellow-100 text-yellow-800'
+                    : booking.status === 'cancelled'
+                    ? 'bg-red-100 text-red-800'
                     : 'bg-blue-100 text-blue-800'
                 }`}
               >

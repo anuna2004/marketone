@@ -130,7 +130,8 @@ export const bookingsApi = {
 
   updateStatus: async (id, status) => {
     try {
-      const response = await api.patch(`/bookings/${id}/status`, { status });
+      const statusValue = typeof status === 'object' ? status.status : status;
+      const response = await api.patch(`/bookings/${id}/status`, { status: statusValue });
       return response;
     } catch (error) {
       console.error('Error updating booking status:', error);
