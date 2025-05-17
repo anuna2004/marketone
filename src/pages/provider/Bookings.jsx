@@ -39,6 +39,50 @@ const BookingCard = ({ booking, onStatusChange }) => {
     return new Date(dateString).toLocaleDateString('en-US', options);
   };
 
+  // Helper function to get service information
+  const getServiceInfo = () => {
+    // If service is populated as an object
+    if (booking.service && typeof booking.service === 'object') {
+      return {
+        name: booking.service.name,
+        price: booking.service.price,
+      };
+    }
+    // If service is a string (ID) and we have serviceName
+    if (booking.serviceName) {
+      return {
+        name: booking.serviceName,
+        price: booking.amount,
+      };
+    }
+    // If we have serviceId object
+    if (booking.serviceId && typeof booking.serviceId === 'object') {
+      return {
+        name: booking.serviceId.name,
+        price: booking.serviceId.price || booking.amount,
+      };
+    }
+    // Final fallback
+    return {
+      name: 'Service Booking',
+      price: booking.amount || 0,
+    };
+  };
+
+  const serviceInfo = getServiceInfo();
+
+  // Debug log
+  console.log('Booking data:', {
+    rawBooking: booking,
+    processedService: serviceInfo
+  });
+
+  // Format price with proper decimal places and currency symbol
+  const formatPrice = (price) => {
+    if (price === null || price === undefined) return '$0.00';
+    return `$${parseFloat(price).toFixed(2)}`;
+  };
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="p-6">
@@ -46,10 +90,10 @@ const BookingCard = ({ booking, onStatusChange }) => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h3 className="text-xl font-bold text-gray-900">
-              {booking.service?.name || 'Service Booking'}
+              {serviceInfo.name}
             </h3>
             <p className="text-sm text-gray-500">
-              Booking ID: {booking._id?.substring(0, 8) || 'N/A'}
+              Booking ID: {booking._id?.substring(0, 8) || 'N/A'} • {formatPrice(serviceInfo.price)}
             </p>
           </div>
           <div className="relative">
@@ -118,7 +162,7 @@ const BookingCard = ({ booking, onStatusChange }) => {
                 <div>
                   <p className="text-gray-500">Price</p>
                   <p className="font-medium">
-                    ${booking.service?.price?.toFixed(2) || '0.00'}
+                    {formatPrice(serviceInfo.price)}
                   </p>
                 </div>
               </div>

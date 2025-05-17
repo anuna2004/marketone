@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Star, Calendar, Clock, MapPin, DollarSign, Info, User } from 'lucide-react';
-import { bookingsApi, reviewsApi } from '../../utils/api';
+import { Star, Calendar, Clock, MapPin } from 'lucide-react';
+import { bookingsApi } from '../../utils/api';
+import api from '../../utils/api';
 
 const ReviewModal = ({ isOpen, onClose, onSubmit, booking }) => {
   const [rating, setRating] = useState(0);
@@ -82,253 +83,123 @@ const ReviewModal = ({ isOpen, onClose, onSubmit, booking }) => {
 
 const BookingCard = ({ booking, onReview }) => {
   const [showReviewModal, setShowReviewModal] = useState(false);
-  const [showDetails, setShowDetails] = useState(false);
 
   const handleReview = (reviewData) => {
     onReview(booking._id, reviewData);
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'confirmed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'completed':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Not specified';
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
-  };
-
-  // Debug: Log the entire booking object to see its structure
-  console.log('Raw booking data:', JSON.stringify(booking, null, 2));
-
-  // Get service information with proper fallbacks
+  // Helper function to get service information
   const getServiceInfo = () => {
     // If service is populated as an object
     if (booking.service && typeof booking.service === 'object') {
       return {
-        name: booking.service.name || 'Service',
+        name: booking.service.name,
         price: booking.service.price,
-        description: booking.service.description
       };
     }
-    // If service is a string (ID) and we have serviceName/amount
+    // If service is a string (ID) and we have serviceName
     if (booking.serviceName) {
       return {
         name: booking.serviceName,
         price: booking.amount,
-        description: booking.serviceDescription
       };
     }
-    // Fallback to serviceId if available
-    if (booking.serviceId) {
+    // If we have serviceId object
+    if (booking.serviceId && typeof booking.serviceId === 'object') {
       return {
-        name: booking.serviceId.name || 'Service',
-        price: booking.amount,
-        description: booking.serviceId.description
+        name: booking.serviceId.name,
+        price: booking.serviceId.price || booking.amount,
       };
     }
     // Final fallback
     return {
       name: 'Service Booking',
-      price: null,
-      description: ''
+      price: booking.amount || 0,
     };
   };
 
-  const service = getServiceInfo();
-  
-  // Debug: Log the processed service info
-  console.log('Processed service info:', service);
-  
+  const serviceInfo = getServiceInfo();
+
+  // Format price with proper decimal places and currency symbol
   const formatPrice = (price) => {
-    if (price === null || price === undefined) return 'N/A';
+    if (price === null || price === undefined) return '$0.00';
     return `$${parseFloat(price).toFixed(2)}`;
   };
 
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return 'text-green-800 bg-green-100';
+      case 'pending':
+        return 'text-yellow-800 bg-yellow-100';
+      case 'completed':
+        return 'text-blue-800 bg-blue-100';
+      case 'cancelled':
+        return 'text-red-800 bg-red-100';
+      default:
+        return 'text-gray-800 bg-gray-100';
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-200">
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <h3 className="text-xl font-bold text-gray-900">
-              {service.name}
-            </h3>
-            <p className="text-sm text-gray-500">
-              Booking ID: {booking._id?.substring(0, 8) || 'N/A'} • {booking.providerId?.name || 'Unknown Provider'}
-            </p>
-          </div>
-          <div className="flex items-center">
-            <span
-              className={`px-3 py-1.5 text-sm font-medium rounded-full border ${getStatusColor(booking.status)} flex items-center space-x-1`}
-            >
-              <span className="w-2 h-2 rounded-full bg-current"></span>
-              <span>{booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span>
-            </span>
-          </div>
+    <div className="bg-white rounded-lg shadow-sm p-6">      <div className="flex justify-between items-start mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {serviceInfo.name}
+          </h3>
+          <p className="text-sm text-gray-600">
+            Booking ID: {booking._id?.substring(0, 8) || 'N/A'} • {formatPrice(serviceInfo.price)}
+          </p>
         </div>
-
-        {/* Booking Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="flex items-center text-sm">
-            <Calendar className="h-4 w-4 mr-2 text-gray-400" />
-            <div>
-              <p className="text-gray-500">Date</p>
-              <p className="font-medium">{formatDate(booking.date)}</p>
-            </div>
-          </div>
-          <div className="flex items-center text-sm">
-            <Clock className="h-4 w-4 mr-2 text-gray-400" />
-            <div>
-              <p className="text-gray-500">Time</p>
-              <p className="font-medium">{booking.time || 'Not specified'}</p>
-            </div>
-          </div>
-          <div className="flex items-center text-sm">
-            <DollarSign className="h-4 w-4 mr-2 text-gray-400" />
-            <div>
-              <p className="text-gray-500">Amount</p>
-              <p className="font-medium">{formatPrice(service.price)}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Toggle Details Button */}
-        <button
-          onClick={() => setShowDetails(!showDetails)}
-          className="text-sm text-primary-600 hover:text-primary-700 flex items-center mb-4"
+        <span
+          className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(booking.status)}`}
         >
-          {showDetails ? 'Hide details' : 'View details'}
-          <svg
-            className={`ml-1 w-4 h-4 transition-transform ${showDetails ? 'transform rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
+          {booking.status}
+        </span>
+      </div>
+      <div className="mt-4 space-y-2">
+        <div className="flex items-center space-x-2 text-gray-600">
+          <Calendar className="h-4 w-4" />
+          <p>Scheduled Date: {new Date(booking.date).toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center space-x-2 text-gray-600">
+          <Clock className="h-4 w-4" />
+          <p>Time: {booking.time || 'Time not specified'}</p>
+        </div>
+        <div className="flex items-center space-x-2 text-gray-600">
+          <MapPin className="h-4 w-4" />
+          <p>Location: {booking.location || 'Location not specified'}</p>
+        </div>        <div className="mt-2">
+          <p className="text-primary-600 font-medium">
+            Price: {formatPrice(serviceInfo.price)}
+          </p>
+        </div>
+        {booking.status.toLowerCase() === 'completed' && !booking.review && (
+          <button
+            onClick={() => setShowReviewModal(true)}
+            className="text-sm text-primary-600 hover:text-primary-700"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-
-        {/* Detailed Information */}
-        {showDetails && (
-          <div className="space-y-4 pt-4 border-t border-gray-100">
-            {/* Service Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                <Info className="h-4 w-4 mr-2 text-primary-600" />
-                Service Information
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-start text-sm">
-                  <div>
-                    <p className="text-gray-500">Service</p>
-                    <p className="font-medium">{service.name}</p>
-                  </div>
-                </div>
-                {service.description && (
-                  <div className="col-span-2 text-sm">
-                    <p className="text-gray-500">Description</p>
-                    <p className="font-medium">{service.description}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Location Information */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                <MapPin className="h-4 w-4 mr-2 text-primary-600" />
-                Location Details
-              </h4>
-              <div className="space-y-2">
-                <p className="text-sm text-gray-600">
-                  {booking.address || 'Location not specified'}
-                </p>
-                {booking.notes && (
-                  <div className="mt-2">
-                    <p className="text-xs text-gray-500 font-medium mb-1">Additional Notes:</p>
-                    <p className="text-sm text-gray-600 bg-amber-50 p-2 rounded">{booking.notes}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Provider Information */}
-            {booking.providerId && (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-2 flex items-center">
-                  <User className="h-4 w-4 mr-2 text-primary-600" />
-                  Service Provider
-                </h4>
-                <div className="flex items-center">
-                  <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-medium mr-3">
-                    {booking.providerId.name?.charAt(0) || 'P'}
-                  </div>
-                  <div>
-                    <p className="font-medium">{booking.providerId.name || 'Provider'}</p>
-                    <p className="text-sm text-gray-500">
-                      {booking.providerId.email || 'Contact information not available'}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+            Leave a Review
+          </button>
         )}
-
-        {/* Review Section */}
-        {booking.status.toLowerCase() === 'completed' && (
-          <div className="mt-6 pt-4 border-t border-gray-100">
-            {!booking.review ? (
-              <button
-                onClick={() => setShowReviewModal(true)}
-                className="inline-flex items-center text-sm font-medium text-primary-600 hover:text-primary-700"
-              >
-                <Star className="h-4 w-4 mr-1 text-yellow-400" />
-                Rate this service
-              </button>
-            ) : (
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <div className="flex items-center mb-2">
-                  <div className="flex items-center">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`h-5 w-5 ${
-                          star <= booking.review.rating
-                            ? 'text-yellow-400 fill-current'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="ml-2 text-sm text-gray-500">
-                    Your rating
-                  </span>
-                </div>
-                {booking.review.comment && (
-                  <p className="text-sm text-gray-700 mt-2">
-                    "{booking.review.comment}"
-                  </p>
-                )}
-              </div>
-            )}
+        {booking.review && (
+          <div className="mt-4 bg-gray-50 p-3 rounded">
+            <div className="flex items-center space-x-1">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Star
+                  key={star}
+                  className={`h-4 w-4 ${
+                    star <= booking.review.rating
+                      ? 'text-yellow-400 fill-current'
+                      : 'text-gray-300'
+                  }`}
+                />
+              ))}
+            </div>
+            <p className="text-sm text-gray-600 mt-2">{booking.review.comment}</p>
           </div>
         )}
       </div>
-
-      {/* Review Modal */}
       <ReviewModal
         isOpen={showReviewModal}
         onClose={() => setShowReviewModal(false)}
@@ -354,6 +225,7 @@ const Bookings = () => {
       setLoading(true);
       setError(null);
       const response = await bookingsApi.getAll();
+      console.log('Fetched bookings:', response); // For debugging
       setBookingsList(response || []);
     } catch (err) {
       console.error('Error fetching bookings:', err);
@@ -361,21 +233,35 @@ const Bookings = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleReview = async (bookingId, reviewData) => {
+  };  const handleReview = async (bookingId, reviewData) => {
     try {
-      const response = await reviewsApi.create({ bookingId, ...reviewData });
+      // Transform the data to match backend expectations
+      const transformedData = {
+        rating: reviewData.rating,
+        review: reviewData.comment, // Change comment to review to match backend
+      };
+
+      // Create the review using the correct endpoint
+      const response = await api.post(`/reviews/booking/${bookingId}`, transformedData);
+      
+      // Update the local state
       setBookingsList((prevBookings) =>
         prevBookings.map((booking) =>
           booking._id === bookingId
-            ? { ...booking, review: response }
+            ? { ...booking, review: response.data }
             : booking
         )
       );
+
+      // Show success message
+      alert('Review submitted successfully!');
     } catch (err) {
       console.error('Error submitting review:', err);
-      alert('Failed to submit review. Please try again.');
+      if (err.response?.data?.message) {
+        alert(`Failed to submit review: ${err.response.data.message}`);
+      } else {
+        alert('Failed to submit review. Please try again.');
+      }
     }
   };
 
