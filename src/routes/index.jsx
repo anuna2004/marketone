@@ -46,7 +46,7 @@ const router = createBrowserRouter([
             element: <CustomerNewBooking />,
           },
           {
-            path: 'booking-confirmation',
+            path: 'booking-confirmation/:id',
             element: <BookingConfirmation />,
           },
           {

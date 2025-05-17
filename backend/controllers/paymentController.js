@@ -5,22 +5,34 @@ const { getIO } = require('../utils/socket');
 
 // Create payment intent
 const createPaymentIntent = async (req, res) => {
+  console.log('=== CREATE PAYMENT INTENT STARTED ===');
+  console.log('Request received at:', new Date().toISOString());
+  console.log('Request headers:', req.headers);
+  console.log('Request params:', req.params);
+  
   try {
     const { bookingId } = req.params;
     
-    console.log('Creating payment intent for booking:', bookingId);
+    if (!bookingId) {
+      const error = new Error('No bookingId provided in request');
+      error.code = 'MISSING_BOOKING_ID';
+      throw error;
+    }
     
+    console.log('Looking up booking with ID:', bookingId);
+    
+    console.log('Looking up booking:', bookingId);
     const booking = await Booking.findById(bookingId);
     
     if (!booking) {
-      console.log('Booking not found:', bookingId);
+      console.error('Booking not found:', bookingId);
       return res.status(404).json({ message: 'Booking not found' });
     }
     
     // Fetch service details directly
     const service = await Service.findById(booking.serviceId);
     if (!service) {
-      console.log('Service not found:', booking.serviceId);
+      console.error('Service not found:', booking.serviceId);
       return res.status(404).json({ message: 'Service not found' });
     }
     

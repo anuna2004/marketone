@@ -83,17 +83,23 @@ const BookingConfirmation = () => {
         <div className="space-y-4">
           <div className="flex items-start">
             <div className="flex-shrink-0">
-              <img
-                src={selectedService.image}
-                alt={selectedService.title}
-                className="w-16 h-16 rounded-lg object-cover"
-              />
+              {booking.serviceId?.image ? (
+                <img
+                  src={booking.serviceId.image}
+                  alt={booking.serviceId.title || 'Service'}
+                  className="w-16 h-16 rounded-lg object-cover"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center">
+                  <User className="h-8 w-8 text-gray-400" />
+                </div>
+              )}
             </div>
             <div className="ml-4">
               <h2 className="text-lg font-semibold text-gray-900">
-                {selectedService.title}
+                {booking.serviceId?.title || 'Service'}
               </h2>
-              <p className="text-gray-600">{selectedService.provider}</p>
+              <p className="text-gray-600">{booking.serviceId?.provider?.name || 'Provider'}</p>
             </div>
           </div>
 
@@ -102,7 +108,7 @@ const BookingConfirmation = () => {
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 text-gray-400 mr-3" />
                 <span className="text-gray-600">
-                  {new Date(bookingDetails.date).toLocaleDateString('en-US', {
+                  {new Date(booking.date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
@@ -111,11 +117,11 @@ const BookingConfirmation = () => {
               </div>
               <div className="flex items-center">
                 <Clock className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-600">{bookingDetails.time}</span>
+                <span className="text-gray-600">{booking.timeSlot || 'Anytime'}</span>
               </div>
               <div className="flex items-center">
                 <MapPin className="h-5 w-5 text-gray-400 mr-3" />
-                <span className="text-gray-600">{bookingDetails.address}</span>
+                <span className="text-gray-600">{booking.address || 'Address not specified'}</span>
               </div>
             </div>
           </div>
@@ -124,7 +130,7 @@ const BookingConfirmation = () => {
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Total Amount</span>
               <span className="text-lg font-semibold text-primary-600">
-                ${selectedService.price}
+                ${booking.totalAmount || booking.serviceId?.price || '0.00'}
               </span>
             </div>
           </div>
