@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { bookings } from '../../utils/mockData';
-import { Star } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Star, Calendar, Clock, MapPin } from 'lucide-react';
+import { bookingsApi, reviewsApi } from '../../utils/api';
 
 const ReviewModal = ({ isOpen, onClose, onSubmit, booking }) => {
   const [rating, setRating] = useState(0);
@@ -83,29 +84,56 @@ const BookingCard = ({ booking, onReview }) => {
   const [showReviewModal, setShowReviewModal] = useState(false);
 
   const handleReview = (reviewData) => {
-    onReview(booking.id, reviewData);
+    onReview(booking._id, reviewData);
+  };
+
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed':
+        return 'text-green-800 bg-green-100';
+      case 'pending':
+        return 'text-yellow-800 bg-yellow-100';
+      case 'completed':
+        return 'text-blue-800 bg-blue-100';
+      case 'cancelled':
+        return 'text-red-800 bg-red-100';
+      default:
+        return 'text-gray-800 bg-gray-100';
+    }
   };
 
   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex justify-between items-start mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">{booking.service}</h3>
-          <p className="text-sm text-gray-600">{booking.provider}</p>
+          <h3 className="text-lg font-semibold text-gray-900">{booking.serviceId?.name || 'Service'}</h3>
+          <p className="text-sm text-gray-600">{booking.providerId?.name || 'Unknown Provider'}</p>
         </div>
         <span
-          className={`px-3 py-1 text-sm font-medium rounded-full ${
-            booking.status === 'Completed'
-              ? 'text-green-800 bg-green-100'
-              : 'text-yellow-800 bg-yellow-100'
-          }`}
+          className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(booking.status)}`}
         >
           {booking.status}
         </span>
       </div>
       <div className="space-y-2">
-        <p className="text-sm text-gray-600">Date: {booking.date}</p>
-        {booking.status === 'Completed' && !booking.review && (
+        <div className="flex items-center space-x-2 text-gray-600">
+          <Calendar className="h-4 w-4" />
+          <p>{new Date(booking.date).toLocaleDateString()}</p>
+        </div>
+        <div className="flex items-center space-x-2 text-gray-600">
+          <Clock className="h-4 w-4" />
+          <p>{booking.time || 'Time not specified'}</p>
+        </div>
+        <div className="flex items-center space-x-2 text-gray-600">
+          <MapPin className="h-4 w-4" />
+          <p>{booking.location || 'Location not specified'}</p>
+        </div>
+        <div className="mt-4">
+          <p className="text-primary-600 font-medium">
+            ${booking.serviceId?.price || 'N/A'}
+          </p>
+        </div>
+        {booking.status.toLowerCase() === 'completed' && !booking.review && (
           <button
             onClick={() => setShowReviewModal(true)}
             className="text-sm text-primary-600 hover:text-primary-700"
@@ -114,8 +142,8 @@ const BookingCard = ({ booking, onReview }) => {
           </button>
         )}
         {booking.review && (
-          <div className="mt-2">
-            <div className="flex items-center">
+          <div className="mt-4 bg-gray-50 p-3 rounded">
+            <div className="flex items-center space-x-1">
               {[1, 2, 3, 4, 5].map((star) => (
                 <Star
                   key={star}
@@ -127,7 +155,7 @@ const BookingCard = ({ booking, onReview }) => {
                 />
               ))}
             </div>
-            <p className="text-sm text-gray-600 mt-1">{booking.review.comment}</p>
+            <p className="text-sm text-gray-600 mt-2">{booking.review.comment}</p>
           </div>
         )}
       </div>
@@ -142,25 +170,86 @@ const BookingCard = ({ booking, onReview }) => {
 };
 
 const Bookings = () => {
-  const [bookingsList, setBookingsList] = useState(bookings);
+  const navigate = useNavigate();
+  const [bookingsList, setBookingsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const handleReview = (bookingId, reviewData) => {
-    setBookingsList((prevBookings) =>
-      prevBookings.map((booking) =>
-        booking.id === bookingId
-          ? { ...booking, review: reviewData }
-          : booking
-      )
-    );
+  useEffect(() => {
+    fetchBookings();
+  }, []);
+
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await bookingsApi.getAll();
+      setBookingsList(response || []);
+    } catch (err) {
+      console.error('Error fetching bookings:', err);
+      setError('Failed to load bookings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleReview = async (bookingId, reviewData) => {
+    try {
+      const response = await reviewsApi.create({ bookingId, ...reviewData });
+      setBookingsList((prevBookings) =>
+        prevBookings.map((booking) =>
+          booking._id === bookingId
+            ? { ...booking, review: response }
+            : booking
+        )
+      );
+    } catch (err) {
+      console.error('Error submitting review:', err);
+      alert('Failed to submit review. Please try again.');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading bookings...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-gray-900">My Bookings</h2>
+        <button 
+          onClick={() => navigate('/customer/services')}
+          className="btn btn-primary"
+        >
+          Book New Service
+        </button>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 text-red-600 p-4 rounded-md">
+          {error}
+          <button
+            onClick={fetchBookings}
+            className="ml-2 underline hover:text-red-700"
+          >
+            Try again
+          </button>
+        </div>
+      )}
+
       {/* Bookings List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {bookingsList.map((booking) => (
           <BookingCard
-            key={booking.id}
+            key={booking._id}
             booking={booking}
             onReview={handleReview}
           />
@@ -168,14 +257,19 @@ const Bookings = () => {
       </div>
 
       {/* No Bookings Message */}
-      {bookingsList.length === 0 && (
+      {!loading && !error && bookingsList.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-600">No bookings found</p>
-          <button className="mt-4 btn btn-primary">Book a Service</button>
+          <button 
+            onClick={() => navigate('/customer/services')}
+            className="mt-4 btn btn-primary"
+          >
+            Book a Service
+          </button>
         </div>
       )}
     </div>
   );
 };
 
-export default Bookings; 
+export default Bookings;

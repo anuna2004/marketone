@@ -96,17 +96,22 @@ const Services = () => {
       alert('Failed to delete service. Please try again.');
     }
   };
-
   const handleSubmit = async (formData) => {
     try {
       if (selectedService) {
-        await updateService(selectedService._id, formData);
+        const updatedService = await updateService(selectedService._id, formData);
+        // Don't need to refresh services since the state is already updated in the context
+        setIsModalOpen(false);
+        return updatedService;
       } else {
-        await addService(formData);
+        const newService = await addService(formData);
+        // Don't need to refresh services since the state is already updated in the context
+        setIsModalOpen(false);
+        return newService;
       }
-      setIsModalOpen(false);
     } catch (err) {
       console.error('Error saving service:', err);
+      throw err; // Re-throw to let the modal handle the error
     }
   };
 

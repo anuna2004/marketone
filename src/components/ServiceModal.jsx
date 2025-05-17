@@ -112,17 +112,8 @@ const ServiceModal = ({ isOpen, onClose, service, onSubmit }) => {
           coordinates: formData.location.coordinates || [0, 0],
           address: formData.location.address || ''
         }
-      };
-
-      if (service && service._id) {
-        // Update existing service
-        const response = await servicesApi.update(service._id, dataToSubmit);
-        onSubmit(response);
-      } else {
-        // Create new service
-        const response = await servicesApi.create(dataToSubmit);
-        onSubmit(response);
-      }
+      };      // Submit data to parent component
+      await onSubmit(dataToSubmit);
       onClose();
     } catch (err) {
       console.error('Service submission error:', err);
